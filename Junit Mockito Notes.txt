@@ -1,0 +1,608 @@
+*****************************************************************************************
+*									JUnit												*
+*****************************************************************************************	
+
+<dependency>
+	<groupId>junit</groupId>
+	<artifactId>junit</artifactId>
+	<version>4.12</version>
+	<scope>test</scope>
+</dependency>								
+
+Quick Tips:
+highlight single test method -> right click -> run as junit test -> runs only that test method
+some test fails -> junit tab -> click on failed test name -> navigate us to line where the error occured
+Right click junit package name -> run As -> junit test, all the jnuit classes under that package will get executed.
+-------------------------------------------------------------
+Test Arrays:
+if we test arrays with assertEquals() method, it compares the array object and not its content.
+To compare the content of arrays, use assertArrayEquals() method.
+-------------------------------------------------------------	
+Testing Exceptions:
+@Test(expected=NullpointerException.class)
+-------------------------------------------------------------
+Testing performance:
+@Test(timeout=1000)
+Test should complete within timeout period(1000 msec), else test will fail.
+-------------------------------------------------------------
+Parameterized test:
+We can not have 2 different paramaterized tests in one class. The reason is one class can have only one constructor and one input and output property.
+
+ex- 
+
+@RunWith(Parameterized.class)
+public class StringHelperParameterizedTest {
+	
+	StringHelper helper = new StringHelper();
+	private String input;
+	private String expectedOutput;
+	
+	public StringHelperParameterizedTest(String input, String output) {
+		super();
+		this.input = input;
+		this.expectedOutput = output;
+	}
+	
+	@Parameters
+	public static Collection<String[]> testTruncateAInFirst2Positions() {
+		String expectedOutputs[][] = {
+				{"AACD", "CD"},
+				{"ACD", "CD"}
+		};
+		return Arrays.asList(expectedOutputs);
+	}
+
+	@Test
+	public void testTruncateAInFirst2Positions_AinFirst2Positions() {
+		assertEquals(expectedOutput, helper.truncateAInFirst2Positions(input));
+	}
+}
+-------------------------------------------------------------
+Test Suite:
+If we run a test suite, all the jnuit classes which are part of that test suite will run.
+
+Right click -> new -> Others -> JUNIT Test Suite -> Select classes that you want to be part of test suite -> Finish
+
+
+*****************************************************************************************
+*									Stub												*
+*****************************************************************************************
+SUT (System Under Test) - java class which we want to test
+Dependency - java class which we want to mock
+stub - class which gives us dummy implemention of dependency
+
+Disadvantages:
+Ex- Stub is an implementation of external interface. So, we need to implement all the methods of that interface in our stub class.(even if we are using just one method of interface)
+It is difficult to create different scenarios required for testing with a stub. The reason is that we can have just one implementation for any interface method.
+
+Stub example - 
+
+public interface ToDoService {
+	public List<String> retrieveTodos(String user);
+}
+
+public class ToDoServiceStub implements ToDoService{
+	public List<String> retrieveTodos(String user) {
+		return Arrays.asList("Learn spring MVC", "Learn spring", "Learn to dance");
+	}
+}
+
+public class ToDoBusinessImpl {
+	private ToDoService toDoService;
+
+	public ToDoBusinessImpl(ToDoService toDoService) {
+		this.toDoService = toDoService;
+	}
+
+	public List<String> retrieveTodosRelatedToSpring(String user) {
+		List<String> filteredTodos = new ArrayList<String>();
+		List<String> allTodos = toDoService.retrieveTodos(user);
+		for (String todo : allTodos) {
+			if (todo.contains("spring")) {
+				filteredTodos.add(todo);
+			}
+		}
+		return filteredTodos;
+	}
+}
+
+public class ToDoBusinessImplStubTest {
+	
+	@Test
+	public void usingAStub() {
+		ToDoService toDoServiceStub = new ToDoServiceStub() ;
+		ToDoBusinessImpl todoBusinessImpl = new ToDoBusinessImpl(toDoServiceStub);
+		
+		List<String> todos = todoBusinessImpl.retrieveTodosRelatedToSpring("dummy");
+		
+		assertEquals(2, todos.size());
+		assertArrayEquals(Arrays.asList("Learn spring MVC", "Learn spring").toArray(), todos.toArray());
+	} 	
+}
+
+*****************************************************************************************
+*									Mockito												*
+*****************************************************************************************
+
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-all</artifactId>
+			<version>1.10.19</version>
+			<scope>test</scope>
+		</dependency>
+
+Mocking is creating objects that simulate the behaviou of real object.
+Unlike stub, mock can be dynamically created from code - at runtime.
+
+Easier Static Imports. This enable suggestion for imports after pressing ctrl+space
+Window > Preferences > Java > Editor > Content Assist > Favorites
+org.junit.Assert
+org.mockito.BDDMockito
+org.mockito.Mockito
+org.hamcrest.Matchers
+org.hamcrest.CoreMatchers
+
+mock() method can be used to create mock object of a class or interface.
+
+------------
+Mock a class and stub a method:
+
+What happens if an unstubbed method is called?
+By default, for all methods that return a value, a mock will return either null, a a primitive/primitive wrapper value, or an empty collection, as appropriate. For example 0 for an int/Integer and false for a boolean/Boolean.
+If we do not stub a method using when(method).thenReturn() , then mockito returns default value as per the return datatype of method.
+This is called as 'nice mock behaviour'.
+In below example, if we do not stub method retrieveTodosRelatedToSpring(), then it will return blank list [] as its return type is List<String>
+
+Mocking a class -> ToDoService toDoServiceMock = mock(ToDoService.class);
+Stubbing a methods -> when(todoBusinessImpl.retrieveTodosRelatedToSpring("dummy")).thenReturn(mockTodos);
+
+ex-
+public class ToDoBusinessImplMockTest {
+	@Test
+	public void testRetrieveTodosRelatedToSpring_usingAMock() {
+		ToDoService toDoServiceMock = mock(ToDoService.class);
+		ToDoBusinessImpl todoBusinessImpl = new ToDoBusinessImpl(toDoServiceMock);
+		
+		List<String> mockTodos = Arrays.asList("Learn spring MVC", "Learn spring", "Learn to dance");
+		when(todoBusinessImpl.retrieveTodosRelatedToSpring("dummy")).thenReturn(mockTodos);
+		
+		List<String> todos = todoBusinessImpl.retrieveTodosRelatedToSpring("dummy");
+		
+		assertEquals(2, todos.size());
+		assertArrayEquals(Arrays.asList("Learn spring MVC", "Learn spring").toArray(), todos.toArray());
+	}
+}
+--------------
+
+Stubbing a method:
+
+whenever method is called 1st time and onwards, it returns 2
+when(mockList.size()).thenReturn(2).thenReturn(3);
+
+whenever method is called 1st time, it returns 2
+whenever method is called 2nd time and onwards, it returns 3
+when(mockList.size()).thenReturn(2).thenReturn(3); 
+--------------
+
+Argument Matcher:
+anyInt() -> ex- when(mockList.get(anyInt())).thenReturn("abc");
+
+What if we combine a matcher with hardcoded value when stubbing?
+Mockito does not allow it. All arguments should eitther be matcher or hardcodeded raw values.
+--------------
+
+Throw Exception:
+when(mockList.get(anyInt())).thenThrow(new RuntimeException("something"));
+--------------
+BDD (Behaviour Driven Development) Style - Given When Then
+It is not doing anything different than Mockito When Then style. There is just synatx difference to make the tests more readable.
+
+Given -> Setup before calling actual method (SUT)
+		 in BDD, use this instead of when().then() -> given().willReturn()
+When -> calling actual method (SUT)
+Then -> assert using assertThat. Also, hamcrest matchers can be user here ex- is("abc")
+
+Mockito Test ->
+	@Test
+	public void letsMockListGet() {
+		List<String> mockList = mock(List.class);
+		when(mockList.get(0)).thenReturn("abc");
+		
+		assertEquals("abc", mockList.get(0));
+		assertNull(mockList.get(1));
+	}
+
+Mockito BDD Test ->
+	@Test
+	public void letsMockListGet_BDD() {
+		//Given
+		List<String> mockList = mock(List.class);
+		given(mockList.get(0)).willReturn("abc");
+		
+		//When
+		String str = mockList.get(0);
+		
+		//Then
+		assertThat(str, is("abc"));
+	}
+--------------
+Verify calls on Mocks:
+
+Used to check if specific method is called or not on a Mock.
+How many times a method is called on a Mock.
+
+Scenario where this can be used - 
+This can be used to test a method call when method is not returning anything. Thus, we cannot use assertEquals() on the return value.
+In this case verify() method can be called.
+
+	@Test
+	public void testDeleteTodosNotRelatedToSpring() {
+		ToDoService toDoService = mock(ToDoService.class);
+		ToDoBusinessImpl toDoBusinessImpl = new ToDoBusinessImpl(toDoService);
+		
+		when(toDoService.retrieveTodos(anyString())).thenReturn(Arrays.asList("Learn spring MVC", "Learn spring", "Learn to dance"));
+		
+		toDoBusinessImpl.deleteTodosNotRelatedToSpring("test");
+		
+		verify(toDoService).deleteTodo("Learn to dance");			 //called exactly one time
+		verify(toDoService, times(1)).deleteTodo("Learn to dance");  //called exactly one time
+		verify(toDoService, never()).deleteTodo("Learn spring MVC"); //never called
+		verify(toDoService, never()).deleteTodo("Learn spring");	 //never called
+		verify(toDoService, atLeastOnce()).deleteTodo("Learn to dance");  //called atleast once
+		verify(toDoService, atLeast(2)).deleteTodo("Learn to dance");     //called atleast 2 times
+	}
+	
+Alternative to verify() method in BDD style:
+then(toDoService).should().deleteTodo("Learn to dance");
+then(toDoService).should(times(2)).deleteTodo("Learn to dance");
+then(toDoService).should(never()).deleteTodo("Learn spring MVC");
+then(toDoService).should(never()).deleteTodo("Learn spring");
+then(toDoService).should(atLeastOnce()).deleteTodo("Learn to dance");
+
+--------------
+Capturing arguments passed to a Mock:
+
+There are 3 steps in it:
+
+Declare argument captor
+Define argument captor on specific method call
+Capture argument
+
+ex - Capturing arguments when mehod is called 1 time -> 
+	@Test
+	public void testDeleteTodosNotRelatedToSpring_ArgumentCapture() {
+		ToDoService toDoService = mock(ToDoService.class);
+		ToDoBusinessImpl toDoBusinessImpl = new ToDoBusinessImpl(toDoService);
+		
+		given(toDoService.retrieveTodos(anyString())).willReturn(Arrays.asList("Learn spring MVC", "Learn spring", "Learn to dance"));
+		
+		//Declare argument captor
+		ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+		
+		toDoBusinessImpl.deleteTodosNotRelatedToSpring("test");
+		
+		//Define argument captor on specific method call
+		then(toDoService).should().deleteTodo(stringArgumentCaptor.capture());
+		
+		//capture argument
+		assertThat(stringArgumentCaptor.getValue(), is("Learn to dance"));
+		
+	}
+
+
+ex - Capturing arguments when mehod is called 2 times -> 
+
+Just change step 3 (capture argument). Rest all will be same.
+
+		//capture argument
+		List<String> argumentsCaptured =  stringArgumentCaptor.getAllValues();
+		
+		assertThat(argumentsCaptured.size(), is(2));
+		assertThat(argumentsCaptured, is(Arrays.asList("Learn to dance", "Learn to paint")));
+
+-------------
+
+Hamcrest Matchers - 
+They allows test code to have more readable assert statements.
+
+		<dependency>
+			<groupId>org.hamcrest</groupId>
+			<artifactId>hamcrest-library</artifactId>
+			<version>1.3</version>
+			<scope>test</scope>
+		</dependency>
+		
+Easier Static Imports. This enable suggestion for imports after pressing ctrl+space
+Window > Preferences > Java > Editor > Content Assist > Favorites
+org.hamcrest.Matchers.*
+
+ex-
+public class HamcrestMatchersTest {	
+	@Test
+	public void testHamcrestMatchers() {
+		
+		//For List
+		List<Integer> scores = Arrays.asList(99,100,101,105);
+		
+		assertThat(scores, hasSize(4));
+		assertThat(scores, hasItems(99,100));
+		assertThat(scores, everyItem(lessThan(110)));
+		assertThat(scores, everyItem(greaterThan(90)));
+		
+		//String
+		assertThat("", isEmptyString());
+		assertThat(null, isEmptyOrNullString());
+		
+		//Arrays
+		Integer[] marks = {4,1,3,2};
+		assertThat(marks, arrayWithSize(4));
+		assertThat(marks, arrayContaining(4,1,3,2)); //all items must be present in order same as actual array
+		assertThat(marks, arrayContainingInAnyOrder(1,4,2,3)); //all items must be present in any order compared to actual array
+ 	}
+}
+
+-----------
+Mockito Annotaions:
+@Mock, @InjectMocks, @RunWith(MockitoJunitRunner.class) , @Captor
+
+
+@RunWith(MockitoJUnitRunner.class) ->
+Runs the test with MockitoJUnitRunner.class.
+
+
+MockitoJUnitRunner.class ->
+Initializes mocks annotated with @Mock,so that explicit usage of below is not necessary.
+		MockitoAnnotations.initMocks(Object) or
+		ToDoService toDoServiceMock = mock(ToDoService.class);
+Mocks are initialized before each test method. 
+Mocks will not be initialized (will be null) until we give annotation @RunWith(MockitoJUnitRunner.class) to junit class.
+Also, MockitoJUnitRunner.class looks for all the dependencies(added via consructor argument or @autowired annotation) of the class having @InjectMocks annotation. It find the mocks (declared via @Mock) of those dependencies. These dependency mocks are injected to class using MockitoJUnitRunner.class.														
+
+
+@Mock ToDoService toDoServiceMock -> (needs @RunWith(MockitoJUnitRunner.class))
+This is coneverted to below by MockitoJunitRunner.class
+ToDoService toDoServiceMock = mock(ToDoService.class);
+
+
+@InjectMocks ToDoBusinessImpl todoBusinessImpl -> (needs @RunWith(MockitoJUnitRunner.class))
+This is coneverted to below by MockitoJunitRunner.class
+ToDoBusinessImpl todoBusinessImpl = new ToDoBusinessImpl(toDoServiceMock);
+
+@Captor ArgumentCaptor<String> stringArgumentCaptor-> (needs @RunWith(MockitoJUnitRunner.class))
+This is coneverted to below by MockitoJunitRunner.class
+ArgumentCaptor<String> stringArgumentCaptor = ArgumentCaptor.forClass(String.class);
+Here, the captor type is picked from what we have declared in field with annotation (ex- ArgumentCaptor<String>)
+-------------
+
+Mockito Junit Rule:
+
+One Junit class can have only one Runner. So only one @RunWith
+But you can add multiple Rules in one junit class. Rules are prefrred over Runners.
+Rules should be defined as public so that Junit framework is able to access it.
+
+//@RunWith(MockitoJUnitRunner.class) -> replaced by rule
+public class ToDoBusinessImplMockitoInjectMocksTest {
+	
+	@Rule
+	public MockitoRule mockitoRule = MockitoJUnit.rule();
+	
+	//code
+}
+-------------
+
+Mockito Spy:
+
+Mock does not include any business logic from the class they are created.
+
+	@Test
+	public void test() {
+		List arrayListMock = mock(ArrayList.class);
+		assertEquals(0, arrayListMock.size());
+		
+		when(arrayListMock.size()).thenReturn(5);
+		assertEquals(5, arrayListMock.size());
+		
+		//do not change the output of size() method. 
+		//since mock do not have any real business logic from the class they are created
+		when(arrayListMock.size()).thenReturn(5);
+		assertEquals(5, arrayListMock.size());
+	}
+	
+Spy retains all the business logic from the class they are created.
+But we can also stub specific methods of our choice. All other methods will have predefined business logic.
+Spy is also called partial mock.
+Spy enables you to keep track of real actions as well (i.e. whether certain method is called or not)
+
+NOTE - Spy usage should be avoided as much as possible. It is not used in 99% real projects and should be used only in exceptional conditions.
+It was used in legacy systems.
+
+ex- 
+
+	@Test
+	public void test_WithSpy() {
+		List arrayListSpy = spy(ArrayList.class);
+		assertEquals(0, arrayListSpy.size());
+		
+		//change the output of size() method. 
+		//since spy has all the business logic from the class they are created
+		arrayListSpy.add("A");
+		assertEquals(1, arrayListSpy.size());
+		
+		arrayListSpy.remove("A");
+		assertEquals(0, arrayListSpy.size());
+		
+		//keep track of real actions
+		verify(arrayListSpy).add("A");
+		verify(arrayListSpy, never()).clear();
+	}
+--------------------
+
+Mockito does not allow mock final,static,private methods and final class.
+It can be done using PowerMock.
+
+
+*****************************************************************************************
+*									PowerMock											*
+*****************************************************************************************	
+
+<!-- To integrate PowerMock with Mockito -->
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-api-mockito</artifactId>
+			<version>1.6.4</version>
+			<scope>test</scope>
+		</dependency>
+<!-- Basic PowerMock module -->
+		<dependency>
+			<groupId>org.powermock</groupId>
+			<artifactId>powermock-module-junit4</artifactId>
+			<version>1.6.4</version>
+			<scope>test</scope>
+		</dependency>
+		
+-----------
+
+Mock static method and verify call to static method
+
+
+Mock static method:
+By default, simple junit test or mockito test is able to call static method without any issues.
+But mockito is not able to mock static method in the same way it mocks other methods.
+ex- when(UtilityClass.staticMethod(2)).thenReturn(6);  -> do not mock implementation of static method.
+
+To mock a static method, below 3 steps are needed - 
+1. use @RunWith(PowerMockRunner.class)
+2. Initialize class having static method to be mocked
+	@PrepareForTest(UtilityClass.class)   and    
+	PowerMockito.mockStatic(UtilityClass.class); //before mocking static method (This is needed before mocking each static method.)
+3. mock static method
+
+Verify call to static method (whether a static method is called or not):
+It involves 2 steps:
+1. Tell PowerMockito that next line of code is to verify static method call. (This is needed before each static method verification)
+	PowerMockito.verifyStatic();
+2. This is the method which will be verified
+	UtilityClass.staticMethod(6);
+
+ex- 
+
+RunWith(PowerMockRunner.class)
+//Initialize class containing static method
+@PrepareForTest({UtilityClass.class, OtherUtilityClass.class})
+public class MockingStaticMethodTest {
+	
+	@Mock
+	Dependency dependency;
+	
+	@InjectMocks
+	SystemUnderTest systemUnderTest;
+	
+	@Test
+	public void testMethodCallingAStaticMethod() {
+		
+		when(dependency.retrieveAllStats()).thenReturn(Arrays.asList(1,2,3));
+		
+		//Initialize class containing static method
+		PowerMockito.mockStatic(UtilityClass.class);
+		//mock static method
+		when(UtilityClass.staticMethod(6)).thenReturn(150);
+		
+		//Initialize class containing static method
+		PowerMockito.mockStatic(OtherUtilityClass.class);
+		//mock static method
+		when(OtherUtilityClass.staticMethod(6)).thenReturn(150);
+		
+		int result = systemUnderTest.methodCallingAStaticMethod(); 
+		assertEquals(150, result);
+		
+		//verify static method call
+		PowerMockito.verifyStatic();
+		UtilityClass.staticMethod(6);
+		
+		//verify static method call
+		PowerMockito.verifyStatic();
+		OtherUtilityClass.staticMethod(6);
+	}
+}
+
+-------------
+
+Invoke private method: 
+
+ex- 
+long result = Whitebox.invokeMethod(systemUnderTest, "privateMethodUnderTest");
+
+NOTE - It is not generally recommended to test private method.
+-------------
+
+Mock constructor:
+
+It involves 2 steps - 
+
+1. @PrepareForTest - with the class using the constructor to create the object and not the class which contains the consructor. 
+	NOTE - This is unlike the class passed to @PrepareForTest during mocking static method
+2. Mock constructor
+	PowerMockito.whenNew(ArrayList.class).withAnyArguments().thenReturn(mockArrayList);
+
+ex-
+(To be tested)
+public class SystemUnderTest {
+	public int methodUsingAnArrayListConstructor() {
+		// we will be mocking "new ArrayList()" constructor part
+		ArrayList list = new ArrayList();
+		return list.size();
+	}
+}
+							---
+
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(SystemUnderTest.class)
+public class MockingConstructorTest {
+	
+	@InjectMocks
+	SystemUnderTest systemUnderTest;
+	
+	@Mock
+	ArrayList mockArrayList;
+	
+	@Test
+	public void testMethodUsingAnArrayListConstructor() throws Exception {
+		
+		//mock constructor
+		PowerMockito.whenNew(ArrayList.class).withAnyArguments().thenReturn(mockArrayList);
+		
+		when(mockArrayList.size()).thenReturn(3);
+		
+		int size = systemUnderTest.methodUsingAnArrayListConstructor();
+		
+		assertEquals(3, size);
+	}
+}
+
+*****************************************************************************************
+*							Writing good unit test										*
+*****************************************************************************************
+
+test method namning convention ->
+methodName_testScenario_Result
+ex - saveChangedProducts_ProductInScreenAndDatabase_IsUpdated() {}
+
+Test should be readable.
+Test should fail only when there are real logic failures and not when there are environmental issues (ex - database etc)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
